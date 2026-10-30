@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="manifest" href="manifest.json">
-  <!-- Ícone para navegadores e Android -->
-<link rel="icon" type="image/png" sizes="32x32" href="logonr.png">
-<link rel="icon" type="image/png" sizes="192x192" href="logonr.png">
-
-<!-- Ícone específico para iPhone / iPad (iOS) -->
-<link rel="apple-touch-icon" sizes="180x180" href="logonr.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NR Estética Automotiva</title>
@@ -22,9 +15,9 @@
   <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center gap-3">
-        <div class="bg-amber-500/10 p-1 rounded-xl border border-amber-500/30 w-12 h-12 flex items-center justify-center overflow-hidden">
-    <img src="logonr.png" alt="Logo NR Estética" class="w-full h-full object-cover rounded-lg">
-</div>
+        <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30">
+          <i class="ph ph-car text-amber-500 text-2xl"></i>
+        </div>
         <div>
           <h1 class="text-xl font-bold tracking-wide text-slate-100">NR <span class="text-amber-500">Estética Automotiva</span></h1>
           <p class="text-xs text-slate-400">Sistema Integrado de Gestão & Agenda</p>
@@ -191,11 +184,16 @@
       <!-- Tabela Completa de Serviços do Mês & Gastos -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Tabela Serviços -->
+        <!-- Tabela Serviços (Ordenados e Separados por Dia) -->
         <div class="lg:col-span-2 bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl space-y-4">
-          <h3 class="text-md font-bold text-slate-200 flex items-center gap-2">
-            <i class="ph ph-list-bullets text-amber-500"></i> Todos os Serviços do Mês Selecionado
-          </h3>
+          <div class="flex justify-between items-center">
+            <h3 class="text-md font-bold text-slate-200 flex items-center gap-2">
+              <i class="ph ph-list-bullets text-amber-500"></i> Todos os Serviços do Mês Selecionado
+            </h3>
+            <span class="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700">
+              Ordenado por dia
+            </span>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-300">
               <thead class="bg-slate-900 text-slate-400 text-xs uppercase">
@@ -335,7 +333,7 @@
         </div>
 
         <div>
-          <label class="text-xs text-slate-400 font-medium">Valor Acombinado (R$)</label>
+          <label class="text-xs text-slate-400 font-medium">Valor Combinado (R$)</label>
           <input type="number" step="0.01" id="modalValor" placeholder="0,00" required class="w-full mt-1 p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-500">
         </div>
 
@@ -454,7 +452,7 @@
     // ==========================================================
     // NR ESTÉTICA - HTML LOCAL + GOOGLE SHEETS
     // Apps Script é usado SOMENTE como API. Esta página nunca redireciona.
-    // Conexão por JSONP (mesmo padrão do sistema GRASSI de exemplo).
+    // Conexão por JSONP.
     // ==========================================================
 
     const API_URL = 'https://script.google.com/macros/s/AKfycbws79AK1jq3UmQnDE11tCUjKr62_Oa4IhcdmxfRsRYgHAvku92cfpb4xQ7wZWLBBYfd/exec';
@@ -625,7 +623,6 @@
       if (!modoSilencioso) mostrarLoading('Sincronizando com a planilha...');
 
       try {
-        // Envia a fila em pequenos lotes para manter a URL curta e rápida.
         while (fila.length > 0) {
           const lote = fila.slice(0, SYNC_CHUNK);
           const ultimoLote = fila.length <= SYNC_CHUNK;
@@ -636,7 +633,6 @@
           if (ultimoLote && resp.data) aplicarDadosServidor(resp.data);
         }
 
-        // Se não havia fila, apenas puxa os dados atuais.
         if (fila.length === 0) {
           const resp = await apiAll();
           aplicarDadosServidor(resp);
@@ -680,7 +676,6 @@
       renderizarAbaAcumulado();
       atualizarStatusConexao();
 
-      // O sistema aparece imediatamente. A planilha sincroniza em segundo plano.
       setTimeout(() => sincronizar(true), 80);
     });
 
@@ -935,28 +930,6 @@
     }
 
     // ==========================================================
-    // ADMINISTRAÇÃO
-    // ==========================================================
-    function reestruturarBanco() {
-      if (!confirm('Criar/reorganizar as tabelas Agendamentos e Gastos? Os registros existentes serão mantidos.')) return;
-      enfileirar('admin', 'rebuild', {});
-      toast('Solicitação enviada. Sincronizando...');
-    }
-
-    function apagarTodosDados() {
-      if (!confirm('ATENÇÃO: apagar TODOS os agendamentos e TODOS os gastos?')) return;
-      if (!confirm('Confirme novamente. Essa ação apaga todos os dados da planilha.')) return;
-      agendamentos = [];
-      gastos = [];
-      diaSelecionado = null;
-      salvarLocal();
-      renderizarTudo();
-      renderizarAbaAcumulado();
-      enfileirar('admin', 'clear', {});
-      toast('Dados apagados no sistema. Sincronizando com a planilha...');
-    }
-
-    // ==========================================================
     // RENDERIZAÇÃO
     // ==========================================================
     function renderizarTudo() {
@@ -1026,8 +999,15 @@
     }
 
     function renderizarFinanceiroEListasMensais() {
-      const am = agendamentos.filter(a => a.data.startsWith(mesSelecionado));
-      const gm = gastos.filter(g => g.data.startsWith(mesSelecionado));
+      // Ordenação dos agendamentos em ordem cronológica (dia a dia)
+      const am = agendamentos
+        .filter(a => a.data && a.data.startsWith(mesSelecionado))
+        .sort((a, b) => a.data.localeCompare(b.data));
+
+      const gm = gastos
+        .filter(g => g.data && g.data.startsWith(mesSelecionado))
+        .sort((a, b) => a.data.localeCompare(b.data));
+
       const entradas = am.filter(a => a.status === 'Concluido').reduce((s, a) => s + a.valor, 0);
       const saidas = gm.reduce((s, g) => s + g.valor, 0);
       const lucro = entradas - saidas;
@@ -1038,19 +1018,49 @@
       elLucro.textContent = formatarMoeda(lucro);
       elLucro.className = `text-2xl font-bold ${lucro >= 0 ? 'text-amber-400' : 'text-rose-500'}`;
 
-      document.getElementById('tabelaAgendaMensal').innerHTML = am.length ? am.map(item => `
-        <tr class="hover:bg-slate-700/30">
-          <td class="p-3">${formatarDataBR(item.data)}</td>
-          <td class="p-3"><strong class="text-slate-100">${esc(item.cliente)}</strong><br><span class="text-xs text-slate-400">${esc(item.veiculo)}</span></td>
-          <td class="p-3">${esc(item.servico)}</td>
-          <td class="p-3 text-emerald-400 font-semibold">${formatarMoeda(item.valor)}</td>
-          <td class="p-3"><button onclick="alternarStatus('${item.id}')" class="px-2.5 py-0.5 text-xs rounded-full border ${item.status === 'Concluido' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}">${item.status === 'Concluido' ? 'Concluído' : 'Pendente'}</button></td>
-          <td class="p-3 text-right whitespace-nowrap">
-            <button onclick="abrirModalEditarAgendamento('${item.id}')" title="Editar" class="text-slate-500 hover:text-amber-400 p-1"><i class="ph ph-pencil-simple text-base"></i></button>
-            <button onclick="excluirAgendamento('${item.id}')" title="Excluir" class="text-slate-500 hover:text-rose-400 p-1"><i class="ph ph-trash text-base"></i></button>
-          </td>
-        </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-500 text-xs italic">Nenhum serviço no mês.</td></tr>';
+      // Monta a Tabela de Serviços do Mês agrupada e dividida por Dia
+      const tbodyAgenda = document.getElementById('tabelaAgendaMensal');
+      if (!am.length) {
+        tbodyAgenda.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500 text-xs italic">Nenhum serviço no mês.</td></tr>';
+      } else {
+        let htmlAgenda = '';
+        let ultimaData = '';
 
+        am.forEach(item => {
+          // Quando muda o dia, cria um divisor visual (cabeçalho de grupo por data)
+          if (item.data !== ultimaData) {
+            ultimaData = item.data;
+            const [ano, mes, dia] = item.data.split('-');
+            const dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia));
+            const diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+
+            htmlAgenda += `
+              <tr class="bg-slate-950/80 border-t border-b border-amber-500/30">
+                <td colspan="6" class="px-3 py-2 text-xs font-bold text-amber-400 capitalize">
+                  <i class="ph ph-calendar-blank inline-block mr-1"></i> Dia ${dia}/${mes}/${ano} — ${diaSemana}
+                </td>
+              </tr>
+            `;
+          }
+
+          htmlAgenda += `
+            <tr class="hover:bg-slate-700/30 transition-colors">
+              <td class="p-3 text-xs text-slate-400">${formatarDataBR(item.data)}</td>
+              <td class="p-3"><strong class="text-slate-100">${esc(item.cliente)}</strong><br><span class="text-xs text-slate-400">${esc(item.veiculo)}</span></td>
+              <td class="p-3">${esc(item.servico)}</td>
+              <td class="p-3 text-emerald-400 font-semibold">${formatarMoeda(item.valor)}</td>
+              <td class="p-3"><button onclick="alternarStatus('${item.id}')" class="px-2.5 py-0.5 text-xs rounded-full border ${item.status === 'Concluido' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}">${item.status === 'Concluido' ? 'Concluído' : 'Pendente'}</button></td>
+              <td class="p-3 text-right whitespace-nowrap">
+                <button onclick="abrirModalEditarAgendamento('${item.id}')" title="Editar" class="text-slate-500 hover:text-amber-400 p-1"><i class="ph ph-pencil-simple text-base"></i></button>
+                <button onclick="excluirAgendamento('${item.id}')" title="Excluir" class="text-slate-500 hover:text-rose-400 p-1"><i class="ph ph-trash text-base"></i></button>
+              </td>
+            </tr>
+          `;
+        });
+        tbodyAgenda.innerHTML = htmlAgenda;
+      }
+
+      // Tabela de Gastos do Mês
       document.getElementById('tabelaGastosMensal').innerHTML = gm.length ? gm.map(item => `
         <tr class="hover:bg-slate-700/30">
           <td class="p-3 text-xs text-slate-400">${formatarDataBR(item.data)}</td>
